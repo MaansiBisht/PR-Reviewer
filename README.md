@@ -426,6 +426,85 @@ pr-review config
 | `output.format` | Output format | `cli` |
 | `cache.enabled` | Enable result caching | `false` |
 
+### Custom Issues and Rules
+
+You can define custom issues and rules to check against in your PR reviews by adding them to the `customRules` array in your `.pr-reviewrc.json` configuration file.
+
+#### Example Usage
+
+```json
+{
+  "model": "deepseek-coder:6.7b",
+  "baseBranch": "main",
+  "fileFilter": {
+    "exclude": ["node_modules/**", "dist/**", "*.min.js"]
+  },
+  "reviewFocus": {
+    "categories": ["bug", "security", "performance"],
+    "severityThreshold": "medium",
+    "context": "E-commerce application handling payment processing",
+    "customRules": [
+      "Check for proper input validation on all user inputs",
+      "Ensure all database queries use parameterized statements",
+      "Verify error messages don't expose sensitive system information",
+      "Check for proper authentication on all API endpoints",
+      "Ensure logging doesn't contain passwords or API keys",
+      "Verify all external API calls have timeout and retry logic",
+      "Check for proper CORS configuration",
+      "Ensure sensitive data is encrypted at rest"
+    ]
+  }
+}
+```
+
+#### How Custom Rules Work
+
+Custom rules are injected into the LLM prompt and guide the review process to focus on your specific requirements. The reviewer will:
+
+1. **Analyze code changes** against your custom rules
+2. **Flag violations** with appropriate severity levels
+3. **Provide specific suggestions** for fixing issues
+4. **Categorize issues** according to your rule types
+
+#### Best Practices for Custom Rules
+
+- **Be specific**: Instead of "Check security", use "Check for SQL injection vulnerabilities"
+- **Focus on context**: Tailor rules to your project's domain (e.g., payment processing, healthcare)
+- **Keep rules actionable**: Each rule should be something that can be verified in code
+- **Use consistent severity**: Group related rules by importance
+
+#### Example Custom Rules by Domain
+
+**Web Applications:**
+```json
+"customRules": [
+  "Validate all user input before processing",
+  "Implement proper CSRF protection",
+  "Use HTTPS for all API endpoints",
+  "Sanitize output to prevent XSS attacks"
+]
+```
+
+**Data Processing:**
+```json
+"customRules": [
+  "Validate data schema before processing",
+  "Handle null/undefined values gracefully",
+  "Implement proper data transformation pipelines",
+  "Log data quality issues for monitoring"
+]
+```
+
+**API Development:**
+```json
+"customRules": [
+  "Implement rate limiting on public endpoints",
+  "Use proper HTTP status codes",
+  "Document API endpoints with OpenAPI/Swagger",
+  "Implement proper error response format"
+]
+```
+
 ## 🤖 Supported Models
 
 ### Recommended Models (Tested)
