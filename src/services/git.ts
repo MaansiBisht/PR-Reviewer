@@ -159,14 +159,54 @@ export class GitService {
     return status.files.length > 0;
   }
 
-  async getCommitsBetween(baseBranch: string, targetBranch: string = 'HEAD'): Promise<string[]> {
+  async getCommitsBetween(baseBranch: string, targetBranch: string = 'HEAD'): Promise<CommitInfo[]> {
     try {
-      const log = await this.git.log([`${baseBranch}..${targetBranch}`, '--oneline']);
-      return log.all.map((commit: { message: string }) => commit.message);
+      const log = await this.git.log([`${baseBranch}..${targetBranch}`]);
+      return log.all.map((commit) => ({
+        hash: commit.hash,
+        message: commit.message,
+        author: commit.author_name,
+        date: commit.date,
+      }));
     } catch {
       return [];
     }
   }
+
+  async findImporters(filePath: string): Promise<string[]> {
+    try {
+      const fileName = filePath.split('/').pop()?.replace(/\.[^/.]+$/, '') || '';
+      const result = await this.git.raw([
+        'grep',
+        '-l',
+        `import.*${fileName}\\|require.*${fileName}`,
+        '--',
+        '*.ts',
+        '*.tsx',
+        '*.js',
+        '*.jsx',
+      ]);
+      return result.split('\n').filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  async getFileContent(filePath: string, ref: string = 'HEAD'): Promise<string | null> {
+    try {
+      const content = await this.git.show([`${ref}:${filePath}`]);
+      return content;
+    } catch {
+      return null;
+    }
+  }
+}
+
+export interface CommitInfo {
+  hash: string;
+  message: string;
+  author: string;
+  date: string;
 }
 
 export const createGitService = (workingDir?: string): GitService => {

@@ -340,4 +340,194 @@ program
     }
   });
 
+program
+  .command('multi <branch>')
+  .description('Run multi-agent review on a branch (Security, Complexity, Feature Verification)')
+  .option('-b, --base <branch>', 'Base branch to compare against', DEFAULT_CONFIG.baseBranch)
+  .option('-m, --model <model>', 'Ollama model to use', DEFAULT_CONFIG.model)
+  .option('-u, --url <url>', 'Ollama API URL', DEFAULT_CONFIG.ollamaUrl)
+  .option('--agents <agents>', 'Comma-separated list of agents to run', 'security,complexity,feature-verification')
+  .option('--json', 'Output results as JSON', false)
+  .option('--markdown', 'Output results as Markdown', false)
+  .option('-o, --output <file>', 'Save report to file')
+  .option('-v, --verbose', 'Enable verbose logging', false)
+  .action(async (branch: string, options) => {
+    try {
+      if (options.verbose) {
+        setLogLevel(LogLevel.DEBUG);
+      }
+
+      const config = buildConfig(options);
+      const { createOrchestrator } = await import('./orchestrator');
+      
+      const agents = options.agents.split(',').map((a: string) => a.trim());
+      const orchestrator = createOrchestrator(config, { agents });
+
+      const prereq = await orchestrator.checkPrerequisites();
+      if (!prereq.ok) {
+        console.error(chalk.red(`Error: ${prereq.message}`));
+        process.exit(1);
+      }
+
+      console.log(chalk.cyan(`\n🤖 Multi-Agent Review: ${branch} → ${options.base}\n`));
+      console.log(chalk.gray(`Agents: ${agents.join(', ')}`));
+
+      const result = await orchestrator.reviewPR({
+        type: 'local',
+        branch,
+        baseBranch: options.base,
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(formatReviewOutput(result));
+        
+        if (result.metadata.agentResults) {
+          console.log(chalk.bold('\n📊 Agent Results:'));
+          for (const agent of result.metadata.agentResults) {
+            console.log(chalk.gray(`  ${agent.agent}: ${agent.issueCount} issues (${(agent.confidence * 100).toFixed(0)}% confidence, ${agent.executionTime}ms)`));
+          }
+        }
+        
+        if (result.metadata.approvalRecommendation) {
+          const color = result.metadata.approvalRecommendation === 'approve' ? chalk.green :
+                       result.metadata.approvalRecommendation === 'request_changes' ? chalk.red :
+                       chalk.yellow;
+          console.log(color(`\n📋 Recommendation: ${result.metadata.approvalRecommendation.replace('_', ' ').toUpperCase()}`));
+        }
+      }
+
+      process.exit(0);
+    } catch (error) {
+      console.error(formatError(error as Error));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('github <owner> <repo> <pr>')
+  .description('Review a GitHub PR')
+  .option('-t, --token <token>', 'GitHub access token (or set GITHUB_TOKEN env var)')
+  .option('-m, --model <model>', 'Ollama model to use', DEFAULT_CONFIG.model)
+  .option('--agents <agents>', 'Comma-separated list of agents', 'security,complexity,feature-verification')
+  .option('--json', 'Output results as JSON', false)
+  .option('-v, --verbose', 'Enable verbose logging', false)
+  .action(async (owner: string, repo: string, pr: string, options) => {
+    try {
+      if (options.verbose) {
+        setLogLevel(LogLevel.DEBUG);
+      }
+
+      const config = buildConfig(options);
+      const { createOrchestrator } = await import('./orchestrator');
+      
+      const token = options.token || process.env.GITHUB_TOKEN;
+      const agents = options.agents.split(',').map((a: string) => a.trim());
+      
+      const orchestrator = createOrchestrator(config, { agents });
+
+      const prereq = await orchestrator.checkPrerequisites();
+      if (!prereq.ok) {
+        console.error(chalk.red(`Error: ${prereq.message}`));
+        process.exit(1);
+      }
+
+      console.log(chalk.cyan(`\n🐙 GitHub PR Review: ${owner}/${repo}#${pr}\n`));
+
+      const result = await orchestrator.reviewPR({
+        type: 'github',
+        owner,
+        repo,
+        prNumber: parseInt(pr, 10),
+        accessToken: token,
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(formatReviewOutput(result));
+      }
+
+      process.exit(0);
+    } catch (error) {
+      console.error(formatError(error as Error));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('bitbucket <workspace> <repo> <pr>')
+  .description('Review a Bitbucket PR')
+  .option('-t, --token <token>', 'Bitbucket access token (or set BITBUCKET_TOKEN env var)')
+  .option('-m, --model <model>', 'Ollama model to use', DEFAULT_CONFIG.model)
+  .option('--agents <agents>', 'Comma-separated list of agents', 'security,complexity,feature-verification')
+  .option('--json', 'Output results as JSON', false)
+  .option('-v, --verbose', 'Enable verbose logging', false)
+  .action(async (workspace: string, repo: string, pr: string, options) => {
+    try {
+      if (options.verbose) {
+        setLogLevel(LogLevel.DEBUG);
+      }
+
+      const config = buildConfig(options);
+      const { createOrchestrator } = await import('./orchestrator');
+      
+      const token = options.token || process.env.BITBUCKET_TOKEN;
+      const agents = options.agents.split(',').map((a: string) => a.trim());
+      
+      const orchestrator = createOrchestrator(config, { agents });
+
+      const prereq = await orchestrator.checkPrerequisites();
+      if (!prereq.ok) {
+        console.error(chalk.red(`Error: ${prereq.message}`));
+        process.exit(1);
+      }
+
+      console.log(chalk.cyan(`\n🪣 Bitbucket PR Review: ${workspace}/${repo}#${pr}\n`));
+
+      const result = await orchestrator.reviewPR({
+        type: 'bitbucket',
+        owner: workspace,
+        repo,
+        prNumber: parseInt(pr, 10),
+        accessToken: token,
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(formatReviewOutput(result));
+      }
+
+      process.exit(0);
+    } catch (error) {
+      console.error(formatError(error as Error));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('serve')
+  .description('Start the PR Reviewer API server and Web UI')
+  .option('-p, --port <port>', 'API server port', '3001')
+  .option('-m, --model <model>', 'Ollama model to use', DEFAULT_CONFIG.model)
+  .option('-u, --url <url>', 'Ollama API URL', DEFAULT_CONFIG.ollamaUrl)
+  .action(async (options) => {
+    try {
+      const config = buildConfig(options);
+      const { startServer } = await import('./server');
+      
+      console.log(chalk.cyan('\n🚀 Starting PR Reviewer Server...\n'));
+      
+      startServer(config, parseInt(options.port, 10));
+      
+      console.log(chalk.green(`✓ API Server: http://localhost:${options.port}`));
+      console.log(chalk.gray('\nRun `npm run ui` in another terminal to start the Web UI'));
+    } catch (error) {
+      console.error(formatError(error as Error));
+      process.exit(1);
+    }
+  });
+
 program.parse();

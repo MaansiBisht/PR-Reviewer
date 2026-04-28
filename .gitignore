@@ -6,3 +6,7 @@ dist/
 coverage/
 .idea/
 .vscode/
+
+# Web UI
+web/node_modules/
+web/dist/

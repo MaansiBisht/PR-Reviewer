@@ -73,7 +73,7 @@ export function mergeConfig(
 
 export function generateDefaultConfig(): string {
   const config: ProjectConfig = {
-    model: 'deepseek-coder',
+    model: 'qwen2.5-coder:7b',
     baseBranch: 'main',
     fileFilter: {
       exclude: [

@@ -7,6 +7,12 @@ export interface ReviewIssue {
   message: string;
   suggestion?: string;
   codeSnippet?: string;
+  confidence?: number;        // 0-100 confidence score
+  evidence?: string[];        // Code snippets/references supporting the finding
+  reasoning?: string;         // Brief explanation of why this is an issue
+  consensus?: boolean;        // True when multiple agents flagged this issue
+  consensusCount?: number;    // Number of agents that agreed on this issue
+  sources?: string[];         // Agents that flagged this issue
 }
 
 export type ReviewCategory = 
@@ -48,6 +54,45 @@ export interface ReviewMetadata {
   filesReviewed: number;
   linesReviewed: number;
   chunksProcessed: number;
+  // Multi-agent specific metadata
+  keyFindings?: string[];
+  recommendations?: string[];
+  overallRiskLevel?: 'critical' | 'high' | 'medium' | 'low' | 'minimal';
+  approvalRecommendation?: 'approve' | 'request_changes' | 'needs_discussion';
+  agentResults?: AgentResultSummary[];
+  overallConfidence?: number;  // Aggregated confidence score
+  projectContext?: ProjectContext;
+}
+
+export interface ProjectContext {
+  language: string;
+  framework?: string;
+  testFramework?: string;
+  patterns: string[];
+  conventions: {
+    naming?: 'camelCase' | 'snake_case' | 'PascalCase' | 'mixed';
+    fileStructure?: 'feature-based' | 'layer-based' | 'flat' | 'mixed';
+  };
+  dependencies: string[];
+}
+
+export interface AgentResultSummary {
+  agent: string;
+  issueCount: number;
+  confidence: number;
+  executionTime: number;
+}
+
+export interface PRSource {
+  type: 'github' | 'bitbucket' | 'local';
+  owner?: string;
+  repo?: string;
+  prNumber?: number;
+  branch?: string;
+  baseBranch?: string;
+  url?: string;
+  accessToken?: string;
+  repoPath?: string;
 }
 
 export interface DiffChunk {
@@ -116,7 +161,7 @@ export interface ProjectConfig {
 
 export const DEFAULT_CONFIG: Config = {
   ollamaUrl: 'http://localhost:11434',
-  model: 'deepseek-coder',
+  model: 'qwen2.5-coder:7b',
   baseBranch: 'main',
   maxChunkSize: 4000,
   maxRetries: 3,
