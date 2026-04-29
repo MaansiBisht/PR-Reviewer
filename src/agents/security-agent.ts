@@ -25,6 +25,8 @@ with the mindset of an attacker, looking for ways the code could be exploited.`,
     'Security misconfigurations',
     'Cryptographic weaknesses',
     'Input validation issues',
+    'Race conditions and concurrency issues',
+    'State management and synchronization flaws',
   ],
 };
 
@@ -69,6 +71,46 @@ export class SecurityAgent extends BaseAgent {
     { pattern: /cors.*\*|Access-Control-Allow-Origin.*\*/gi, type: 'cors-wildcard', severity: 'medium' as const },
     { pattern: /md5|sha1(?!-)/gi, type: 'weak-crypto', severity: 'medium' as const },
     { pattern: /Math\.random\(\)/gi, type: 'weak-random', severity: 'low' as const },
+  ];
+
+  // Semantic patterns for LLM analysis - these describe anti-patterns conceptually
+  // rather than matching specific code patterns
+  private semanticSecurityPatterns = [
+    {
+      category: 'race-condition',
+      name: 'Concurrent State Mutation',
+      description: 'Code that modifies shared state (tokens, sessions, cache) without proper synchronization (locks, flags, queues)',
+      severity: 'high' as const,
+      cwe: 'CWE-362',
+    },
+    {
+      category: 'race-condition',
+      name: 'Missing Request Queue',
+      description: 'HTTP interceptors or middleware that refresh credentials without queuing concurrent requests',
+      severity: 'high' as const,
+      cwe: 'CWE-362',
+    },
+    {
+      category: 'toctou',
+      name: 'Time-of-Check to Time-of-Use',
+      description: 'Checking a condition (e.g., token validity, permissions) and then acting on it without atomicity',
+      severity: 'high' as const,
+      cwe: 'CWE-367',
+    },
+    {
+      category: 'auth',
+      name: 'Improper Session Handling',
+      description: 'Session or token refresh logic that can fail silently, lose requests, or cause infinite loops',
+      severity: 'high' as const,
+      cwe: 'CWE-613',
+    },
+    {
+      category: 'async',
+      name: 'Unhandled Concurrent Operations',
+      description: 'Async operations that can run simultaneously without coordination (e.g., multiple API calls triggering same refresh)',
+      severity: 'medium' as const,
+      cwe: 'CWE-362',
+    },
   ];
 
   constructor(config: Config, ollama: OllamaClient, logCallback?: AgentLogCallback) {
@@ -187,18 +229,34 @@ export class SecurityAgent extends BaseAgent {
   }
 
   private buildSecurityPrompt(context: AgentContext): string {
+    // Build semantic patterns section for the prompt
+    const semanticPatternsText = this.semanticSecurityPatterns
+      .map(p => `  - **${p.name}** (${p.cwe}): ${p.description}`)
+      .join('\n');
+
     let basePrompt = `You are an expert security auditor. Analyze this code diff for security vulnerabilities.
 
 **CRITICAL: Output ONLY valid JSON. No explanations, no markdown outside JSON.**
 
-Focus on:
-- Injection vulnerabilities (SQL, XSS, Command, LDAP)
+## Standard Vulnerability Categories:
+- Injection vulnerabilities (SQL, XSS, Command, LDAP, etc.)
 - Authentication/Authorization flaws
 - Sensitive data exposure
 - Security misconfigurations
 - Cryptographic weaknesses
 - Input validation issues
 - Access control problems
+
+## Concurrency & State Management Issues (IMPORTANT):
+${semanticPatternsText}
+
+## General Anti-Patterns to Look For:
+- Shared mutable state accessed without synchronization
+- Async operations that can race (e.g., multiple refresh calls, concurrent writes)
+- Check-then-act patterns without atomicity
+- Error handling that can leave system in inconsistent state
+- Retry logic without proper backoff or deduplication
+- Event handlers or interceptors that don't handle concurrent invocations
 
 JSON format:
 {
@@ -320,6 +378,12 @@ JSON:`;
       'cors-wildcard': 'CORS wildcard allows any origin',
       'weak-crypto': 'Weak cryptographic algorithm used',
       'weak-random': 'Math.random() is not cryptographically secure',
+      // Generic concurrency/state patterns (descriptions for LLM-detected issues)
+      'race-condition': 'Race condition detected: concurrent operations may interfere with each other',
+      'toctou': 'Time-of-check to time-of-use vulnerability: state may change between validation and use',
+      'concurrent-state-mutation': 'Shared state modified without proper synchronization',
+      'missing-request-queue': 'Concurrent requests not queued during state transitions',
+      'improper-session-handling': 'Session/credential handling may fail under concurrent access',
     };
     return descriptions[type] || 'Security issue detected';
   }
@@ -338,6 +402,12 @@ JSON:`;
       'ssl-disabled': 'CWE-295',
       'weak-crypto': 'CWE-327',
       'weak-random': 'CWE-330',
+      // Generic concurrency/state patterns
+      'race-condition': 'CWE-362',
+      'toctou': 'CWE-367',
+      'concurrent-state-mutation': 'CWE-362',
+      'missing-request-queue': 'CWE-362',
+      'improper-session-handling': 'CWE-613',
     };
     return cwes[type];
   }
@@ -360,6 +430,12 @@ JSON:`;
       'cors-wildcard': 'Specify allowed origins explicitly',
       'weak-crypto': 'Use SHA-256 or stronger algorithms',
       'weak-random': 'Use crypto.randomBytes() for security-sensitive operations',
+      // Generic concurrency/state patterns (matched by LLM semantic analysis)
+      'race-condition': 'Use synchronization primitives (mutex, semaphore, flags) to prevent concurrent access; implement request queuing for shared resources',
+      'toctou': 'Make check-and-act operations atomic; use transactions or locks to prevent state changes between check and use',
+      'concurrent-state-mutation': 'Implement proper locking mechanism; use a flag to track in-progress operations and queue subsequent requests',
+      'missing-request-queue': 'Queue pending requests during state transitions; retry queued requests after the operation completes',
+      'improper-session-handling': 'Implement proper error handling and retry logic; ensure requests are not lost during credential refresh',
     };
     return remediations[type] || 'Review and fix the security issue';
   }
