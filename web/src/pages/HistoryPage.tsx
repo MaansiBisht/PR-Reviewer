@@ -96,7 +96,7 @@ export default function HistoryPage() {
       case 'medium': return 'text-yellow-500 bg-yellow-500/10';
       case 'low': return 'text-green-500 bg-green-500/10';
       case 'minimal': return 'text-blue-500 bg-blue-500/10';
-      default: return 'text-gray-500 bg-gray-500/10';
+      default: return 'text-surface-500 bg-surface-500/10';
     }
   };
 

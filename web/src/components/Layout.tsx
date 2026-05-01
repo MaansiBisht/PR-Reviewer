@@ -105,7 +105,7 @@ export default function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen flex bg-surface-100 dark:bg-surface-950">
+    <div className="h-screen flex bg-surface-100 dark:bg-surface-950 overflow-hidden">
       {/* Sidebar */}
       <aside className="w-72 bg-surface-900 dark:bg-surface-950 border-r border-surface-800 flex flex-col">
         {/* Logo */}
