@@ -8,7 +8,6 @@ import * as os from 'os';
 import { createOrchestrator, OrchestratorOptions, AgentLog, AgentInfo } from '../orchestrator';
 import { createGitService } from '../services/git';
 import { Config, DEFAULT_CONFIG, PRSource, ReviewResult } from '../types';
-import { loadProjectConfig, mergeConfig } from '../utils/config-loader';
 import { logger } from '../utils/logger';
 import { getReviewStore, IssueFeedback, StoredReview } from '../services/review-store';
 import { getResponseCache } from '../services/response-cache';
@@ -97,9 +96,8 @@ export function createServer(config: Config) {
   });
 
   app.get('/api/config', (_req: Request, res: Response) => {
-    const projectConfig = loadProjectConfig();
-    const merged = mergeConfig({}, projectConfig);
-    res.json(merged);
+    const { apiKey: _apiKey, ...safeConfig } = config;
+    res.json(safeConfig);
   });
 
   app.put('/api/config', (req: Request, res: Response) => {

@@ -122,13 +122,6 @@ export interface ReviewFocus {
   context?: string;
 }
 
-export interface OutputOptions {
-  format: 'cli' | 'json' | 'markdown' | 'html';
-  outputFile?: string;
-  includeCodeSnippets?: boolean;
-  groupBy?: 'file' | 'severity' | 'category';
-}
-
 export interface CacheOptions {
   enabled: boolean;
   directory?: string;
@@ -153,7 +146,6 @@ export interface Config {
   timeout: number;
   fileFilter: FileFilter;
   reviewFocus: ReviewFocus;
-  output: OutputOptions;
   cache: CacheOptions;
 }
 
@@ -163,7 +155,6 @@ export interface ProjectConfig {
   baseBranch?: string;
   fileFilter?: FileFilter;
   reviewFocus?: ReviewFocus;
-  output?: Partial<OutputOptions>;
   customPrompt?: string;
 }
 
@@ -195,11 +186,6 @@ export const DEFAULT_CONFIG: Config = {
   reviewFocus: {
     categories: ['bug', 'security', 'performance', 'logic', 'error-handling'],
     severityThreshold: 'low',
-  },
-  output: {
-    format: 'cli',
-    includeCodeSnippets: true,
-    groupBy: 'file',
   },
   cache: {
     enabled: false,
