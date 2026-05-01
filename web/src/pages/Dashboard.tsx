@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   GitBranch,
   Github,
   Play,
@@ -12,7 +12,10 @@ import {
   CheckCircle2,
   Layers,
   Zap,
-  Clock
+  Clock,
+  ArrowRight,
+  Cpu,
+  Activity,
 } from 'lucide-react';
 import { useReviewStore, PRSource } from '../store/reviewStore';
 import { reviewApi, AgentInfo, AgentLog } from '../api/client';
@@ -23,41 +26,45 @@ const AGENT_CONFIGS = [
   {
     id: 'security',
     name: 'SecurityAgent',
-    role: 'Security Auditor',
+    role: 'Security',
     icon: Shield,
-    color: 'from-red-500 to-rose-600',
-    bgColor: 'bg-red-500/10',
-    borderColor: 'border-red-500/30',
+    gradient: 'from-red-500 to-rose-600',
+    ringColor: 'ring-red-500/40',
+    glowColor: 'shadow-[0_0_20px_rgba(239,68,68,0.2)]',
+    textColor: 'text-red-500 dark:text-red-400',
     description: 'Scans for vulnerabilities, injection flaws, and security misconfigurations',
   },
   {
     id: 'complexity',
     name: 'ComplexityAgent',
-    role: 'Complexity Analyst',
+    role: 'Complexity',
     icon: Gauge,
-    color: 'from-amber-500 to-orange-600',
-    bgColor: 'bg-amber-500/10',
-    borderColor: 'border-amber-500/30',
+    gradient: 'from-amber-500 to-orange-500',
+    ringColor: 'ring-amber-500/40',
+    glowColor: 'shadow-[0_0_20px_rgba(245,158,11,0.2)]',
+    textColor: 'text-amber-500 dark:text-amber-400',
     description: 'Analyzes cyclomatic complexity, Big-O, and performance bottlenecks',
   },
   {
     id: 'feature-verification',
     name: 'FeatureVerificationAgent',
-    role: 'Feature Verifier',
+    role: 'Verification',
     icon: CheckCircle2,
-    color: 'from-emerald-500 to-green-600',
-    bgColor: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-500/30',
+    gradient: 'from-emerald-500 to-green-500',
+    ringColor: 'ring-emerald-500/40',
+    glowColor: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]',
+    textColor: 'text-emerald-500 dark:text-emerald-400',
     description: 'Verifies implementation matches intent and identifies gaps',
   },
   {
     id: 'synthesis',
     name: 'SynthesisAgent',
-    role: 'Synthesis Coordinator',
+    role: 'Synthesis',
     icon: Layers,
-    color: 'from-violet-500 to-purple-600',
-    bgColor: 'bg-violet-500/10',
-    borderColor: 'border-violet-500/30',
+    gradient: 'from-violet-500 to-purple-600',
+    ringColor: 'ring-violet-500/40',
+    glowColor: 'shadow-[0_0_20px_rgba(139,92,246,0.2)]',
+    textColor: 'text-violet-500 dark:text-violet-400',
     description: 'Aggregates findings and generates final recommendations',
   },
 ];
@@ -65,20 +72,14 @@ const AGENT_CONFIGS = [
 export default function Dashboard() {
   const navigate = useNavigate();
   const { isLoading, error, setLoading, setError, addReview } = useReviewStore();
-  
+
   const [sourceType, setSourceType] = useState<SourceType>('local');
   const [branches, setBranches] = useState<{ local: string[]; remote: string[] }>({ local: [], remote: [] });
   const [repoPath, setRepoPath] = useState('');
   const [repoSuggestions, setRepoSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [branchError, setBranchError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    branch: '',
-    baseBranch: 'main',
-    owner: '',
-    repo: '',
-    prNumber: '',
-  });
+  const [formData, setFormData] = useState({ branch: '', baseBranch: 'main', owner: '', repo: '', prNumber: '' });
   const [healthStatus, setHealthStatus] = useState<{ ok: boolean; provider: string; model: string; message: string } | null>(null);
   const [currentAgent, setCurrentAgent] = useState<string | null>(null);
   const [agentStatuses, setAgentStatuses] = useState<Record<string, 'idle' | 'running' | 'completed' | 'error'>>({});
@@ -107,12 +108,8 @@ export default function Dashboard() {
     try {
       const data = await reviewApi.getRepos(searchPath);
       setRepoSuggestions(data.repos);
-      if (data.repos.length > 0) {
-        await selectRepo(data.repos[0]);
-      }
-    } catch (error) {
-      console.error('Failed to find repos:', error);
-    }
+      if (data.repos.length > 0) await selectRepo(data.repos[0]);
+    } catch { /* no repos found */ }
   };
 
   const selectRepo = async (selectedPath: string) => {
@@ -125,9 +122,10 @@ export default function Dashboard() {
       setBranches(data);
       const allBranches = [...data.local, ...data.remote];
       const firstBranch = data.local[0] || '';
-      const baseBranch = data.local.find(b => b === 'main' || b === 'master') ||
-                         allBranches.find(b => b.endsWith('/main') || b.endsWith('/master')) ||
-                         data.local[0] || 'main';
+      const baseBranch =
+        data.local.find(b => b === 'main' || b === 'master') ||
+        allBranches.find(b => b.endsWith('/main') || b.endsWith('/master')) ||
+        data.local[0] || 'main';
       setFormData(prev => ({ ...prev, branch: firstBranch, baseBranch }));
     } catch (err: any) {
       setBranchError(err?.response?.data?.error || 'Not a git repository');
@@ -142,9 +140,7 @@ export default function Dashboard() {
 
   const handleRepoPathBlur = () => {
     setTimeout(() => setShowSuggestions(false), 150);
-    if (repoPath && !repoSuggestions.includes(repoPath)) {
-      selectRepo(repoPath);
-    }
+    if (repoPath && !repoSuggestions.includes(repoPath)) selectRepo(repoPath);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,9 +155,7 @@ export default function Dashboard() {
     setElapsedSeconds(0);
     setAgentStartTimes({});
     const startTime = Date.now();
-    const timer = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
+    const timer = setInterval(() => setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000)), 1000);
 
     try {
       const source: PRSource = {
@@ -169,7 +163,7 @@ export default function Dashboard() {
         branch: formData.branch,
         baseBranch: formData.baseBranch,
         ...(sourceType === 'local' ? { repoPath: repoPath || undefined } : {}),
-        ...(sourceType === 'github' || sourceType === 'bitbucket' ? {
+        ...(sourceType !== 'local' ? {
           owner: formData.owner,
           repo: formData.repo,
           prNumber: parseInt(formData.prNumber, 10),
@@ -188,7 +182,6 @@ export default function Dashboard() {
             const statuses: Record<string, 'idle' | 'running' | 'completed' | 'error'> = {};
             status.agents.forEach((a: AgentInfo) => { statuses[a.name] = a.status; });
             setAgentStatuses(statuses);
-            // Track when each agent starts
             setAgentStartTimes(prev => {
               const next = { ...prev };
               status.agents!.forEach((a: AgentInfo) => {
@@ -197,9 +190,7 @@ export default function Dashboard() {
               return next;
             });
           }
-          if (status.logs && status.logs.length > 0) {
-            setAgentLogs(status.logs);
-          }
+          if (status.logs && status.logs.length > 0) setAgentLogs(status.logs);
 
           if (status.status === 'completed' && status.result) {
             clearInterval(timer);
@@ -222,91 +213,93 @@ export default function Dashboard() {
       };
 
       pollStatus();
-    } catch (error) {
+    } catch (err) {
       setReviewPhase('error');
-      setError((error as Error).message);
+      setError((err as Error).message);
       setLoading(false);
     }
   };
 
   const getAgentStatus = (agentName: string) => agentStatuses[agentName] || 'idle';
-  const getAgentLogs = (agentName: string) => agentLogs.filter(l => l.agent === agentName).slice(-5);
+  const getAgentLogs = (agentName: string) => agentLogs.filter(l => l.agent === agentName).slice(-4);
 
   return (
-    <div className="min-h-screen p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-full p-6 lg:p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-start justify-between animate-fade-up">
           <div>
-            <h1 className="text-2xl font-bold text-surface-900 dark:text-white">
+            <h1 className="font-display text-3xl font-bold text-surface-900 dark:text-white tracking-tight">
               Code Review
             </h1>
-            <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-              AI-powered multi-agent analysis
+            <p className="text-sm text-surface-500 mt-1">
+              Multi-agent AI · Security · Complexity · Verification · Synthesis
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 mt-1">
             {healthStatus?.ok ? (
-              <div className="flex items-center gap-2 px-4 py-2 bg-accent-500/10 border border-accent-500/20 rounded-xl">
-                <span className="w-2 h-2 bg-accent-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                <span className="text-sm font-medium text-accent-600 dark:text-accent-400">Connected</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-accent-500/10 border border-accent-500/20 rounded-xl text-xs font-medium text-accent-600 dark:text-accent-400">
+                <span className="status-dot-success animate-pulse" />
+                Connected
               </div>
             ) : (
-              <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
-                <AlertCircle className="w-4 h-4 text-red-500" />
-                <span className="text-sm font-medium text-red-600 dark:text-red-400">Offline</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-xl text-xs font-medium text-red-500">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Offline
               </div>
             )}
             {healthStatus?.provider && (
-              <div className="px-4 py-2 bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl">
-                <span className="text-sm font-mono text-surface-600 dark:text-surface-300 capitalize">{healthStatus.provider}</span>
-              </div>
-            )}
-            {healthStatus?.model && (
-              <div className="px-4 py-2 bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl">
-                <span className="text-sm font-mono text-surface-600 dark:text-surface-300">{healthStatus.model}</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl">
+                <Cpu className="w-3.5 h-3.5 text-primary-500" />
+                <span className="text-xs font-mono text-surface-600 dark:text-surface-300 capitalize">{healthStatus.provider}</span>
+                {healthStatus.model && (
+                  <span className="text-xs font-mono text-surface-400">/ {healthStatus.model}</span>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Input Form Card */}
-        <div className="card p-5 mb-6 animate-fade-up">
+        {/* Form */}
+        <div className="card p-5 animate-fade-up delay-75">
           <form onSubmit={handleSubmit} className="flex items-end gap-4 flex-wrap">
-            {/* Source Type Selector */}
-            <div className="flex gap-1 p-1 bg-surface-100 dark:bg-surface-800 rounded-xl">
-              {(['local', 'github', 'bitbucket'] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setSourceType(type)}
-                  className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                    sourceType === type
-                      ? 'bg-primary-600 text-white shadow-glow'
-                      : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'
-                  }`}
-                >
-                  {type === 'local' ? <GitBranch className="w-4 h-4" /> : 
-                   type === 'github' ? <Github className="w-4 h-4" /> : 
-                   <GitBranch className="w-4 h-4" />}
-                  <span className="hidden sm:inline capitalize">{type}</span>
-                </button>
-              ))}
+            <div>
+              <label className="block text-[10px] font-semibold text-surface-400 dark:text-surface-600 uppercase tracking-widest mb-2">
+                Source
+              </label>
+              <div className="flex gap-1 p-1 bg-surface-100 dark:bg-surface-800/60 rounded-xl border border-surface-200 dark:border-surface-700/50">
+                {(['local', 'github', 'bitbucket'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setSourceType(type)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                      sourceType === type
+                        ? 'bg-primary-500 text-white shadow-glow-sm'
+                        : 'text-surface-500 hover:text-surface-800 dark:hover:text-surface-200 hover:bg-surface-200 dark:hover:bg-surface-700/60'
+                    }`}
+                  >
+                    {type === 'github' ? <Github className="w-3.5 h-3.5" /> : <GitBranch className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline capitalize">{type}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Dynamic Fields */}
             {sourceType === 'local' ? (
               <>
-                {/* Repo path with autocomplete */}
                 <div className="flex-1 min-w-[200px] relative">
-                  <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">Repository</label>
+                  <label className="block text-[10px] font-semibold text-surface-400 dark:text-surface-600 uppercase tracking-widest mb-2">
+                    Repository
+                  </label>
                   <input
                     type="text"
                     value={repoPath}
                     onChange={(e) => handleRepoPathChange(e.target.value)}
                     onFocus={() => setShowSuggestions(repoSuggestions.length > 0)}
                     onBlur={handleRepoPathBlur}
-                    placeholder="/path/to/your/repo"
+                    placeholder="/path/to/repo"
                     className="input font-mono text-sm"
                   />
                   {showSuggestions && (
@@ -325,31 +318,18 @@ export default function Dashboard() {
                         ))}
                     </div>
                   )}
-                  {branchError && (
-                    <p className="absolute -bottom-5 left-0 text-xs text-red-500">{branchError}</p>
-                  )}
+                  {branchError && <p className="absolute -bottom-5 left-0 text-xs text-red-500">{branchError}</p>}
                 </div>
-                {/* Branch selectors */}
                 <div className="w-40">
-                  <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">Branch</label>
-                  <select
-                    value={formData.branch}
-                    onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                    className="input text-sm"
-                    disabled={branches.local.length === 0}
-                  >
+                  <label className="block text-[10px] font-semibold text-surface-400 dark:text-surface-600 uppercase tracking-widest mb-2">Branch</label>
+                  <select value={formData.branch} onChange={(e) => setFormData({ ...formData, branch: e.target.value })} className="input text-sm" disabled={branches.local.length === 0}>
                     {branches.local.map(b => <option key={b} value={b}>{b}</option>)}
                     {branches.remote.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
                 <div className="w-32">
-                  <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">Base</label>
-                  <select
-                    value={formData.baseBranch}
-                    onChange={(e) => setFormData({ ...formData, baseBranch: e.target.value })}
-                    className="input text-sm"
-                    disabled={branches.local.length === 0}
-                  >
+                  <label className="block text-[10px] font-semibold text-surface-400 dark:text-surface-600 uppercase tracking-widest mb-2">Base</label>
+                  <select value={formData.baseBranch} onChange={(e) => setFormData({ ...formData, baseBranch: e.target.value })} className="input text-sm" disabled={branches.local.length === 0}>
                     {branches.local.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
@@ -357,175 +337,145 @@ export default function Dashboard() {
             ) : (
               <>
                 <div className="w-36">
-                  <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">Owner</label>
-                  <input
-                    type="text"
-                    value={formData.owner}
-                    onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-                    placeholder="owner"
-                    className="input text-sm"
-                  />
+                  <label className="block text-[10px] font-semibold text-surface-400 dark:text-surface-600 uppercase tracking-widest mb-2">Owner</label>
+                  <input type="text" value={formData.owner} onChange={(e) => setFormData({ ...formData, owner: e.target.value })} placeholder="owner" className="input text-sm" />
                 </div>
                 <div className="w-36">
-                  <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">Repository</label>
-                  <input
-                    type="text"
-                    value={formData.repo}
-                    onChange={(e) => setFormData({ ...formData, repo: e.target.value })}
-                    placeholder="repo"
-                    className="input text-sm"
-                  />
+                  <label className="block text-[10px] font-semibold text-surface-400 dark:text-surface-600 uppercase tracking-widest mb-2">Repo</label>
+                  <input type="text" value={formData.repo} onChange={(e) => setFormData({ ...formData, repo: e.target.value })} placeholder="repo-name" className="input text-sm" />
                 </div>
                 <div className="w-28">
-                  <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">PR #</label>
-                  <input
-                    type="number"
-                    value={formData.prNumber}
-                    onChange={(e) => setFormData({ ...formData, prNumber: e.target.value })}
-                    placeholder="123"
-                    className="input text-sm"
-                  />
+                  <label className="block text-[10px] font-semibold text-surface-400 dark:text-surface-600 uppercase tracking-widest mb-2">PR #</label>
+                  <input type="number" value={formData.prNumber} onChange={(e) => setFormData({ ...formData, prNumber: e.target.value })} placeholder="42" className="input text-sm" />
                 </div>
               </>
             )}
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading || !healthStatus?.ok}
-              className="btn-primary px-6 py-2.5 shadow-glow"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-              {isLoading ? 'Analyzing...' : 'Start Review'}
+            <button type="submit" disabled={isLoading || !healthStatus?.ok} className="btn-primary px-6 py-2.5 self-end">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              {isLoading ? 'Analyzing…' : 'Run Review'}
             </button>
           </form>
         </div>
 
-        {/* Agent Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Agent Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {AGENT_CONFIGS.map((agent, index) => {
             const status = getAgentStatus(agent.name);
-            const agentLogItems = getAgentLogs(agent.name);
+            const logs = getAgentLogs(agent.name);
             const Icon = agent.icon;
+            const isRunning = status === 'running';
+            const isDone = status === 'completed';
+
             return (
               <div
                 key={agent.id}
-                className={`card overflow-hidden transition-all duration-300 animate-fade-up ${
-                  status === 'running' ? 'ring-2 ring-primary-500/50 shadow-glow' :
-                  status === 'completed' ? 'ring-1 ring-accent-500/30' :
+                className={`relative card overflow-hidden transition-all duration-300 animate-fade-up scan-hover ${
+                  isRunning ? `ring-2 ${agent.ringColor} ${agent.glowColor}` :
+                  isDone ? 'ring-1 ring-accent-500/30' :
                   status === 'error' ? 'ring-1 ring-red-500/30' : ''
                 }`}
-                style={{ animationDelay: `${index * 100}ms` }}
+                style={{ animationDelay: `${index * 80}ms` }}
               >
-                {/* Gradient overlay when running */}
-                {status === 'running' && (
-                  <div className={`absolute inset-0 opacity-5 bg-gradient-to-br ${agent.color} pointer-events-none`} />
+                {isRunning && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-primary-500/5 to-transparent pointer-events-none" />
                 )}
-                
-                <div className="p-4 relative">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${agent.color} shadow-lg`}>
+
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className={`p-2 rounded-lg bg-gradient-to-br ${agent.gradient}`}>
                       <Icon className="w-4 h-4 text-white" />
                     </div>
-                    <div className={`p-1.5 rounded-lg ${
-                      status === 'running' ? 'bg-primary-500/10' :
-                      status === 'completed' ? 'bg-accent-500/10' :
-                      status === 'error' ? 'bg-red-500/10' : 'bg-surface-100 dark:bg-surface-800'
+                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-300 ${
+                      isRunning ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400' :
+                      isDone ? 'bg-accent-500/10 text-accent-600 dark:text-accent-400' :
+                      status === 'error' ? 'bg-red-500/10 text-red-500' :
+                      'bg-surface-100 dark:bg-surface-800 text-surface-400'
                     }`}>
-                      {status === 'idle' && <Clock className="w-4 h-4 text-surface-400" />}
-                      {status === 'running' && <Loader2 className="w-4 h-4 text-primary-500 animate-spin" />}
-                      {status === 'completed' && <CheckCircle className="w-4 h-4 text-accent-500" />}
-                      {status === 'error' && <AlertCircle className="w-4 h-4 text-red-500" />}
+                      {status === 'idle' && <Clock className="w-3 h-3" />}
+                      {isRunning && <Loader2 className="w-3 h-3 animate-spin" />}
+                      {isDone && <CheckCircle className="w-3 h-3" />}
+                      {status === 'error' && <AlertCircle className="w-3 h-3" />}
+                      <span className="hidden sm:inline capitalize">{status}</span>
                     </div>
                   </div>
-                  
-                  {/* Title & Description */}
-                  <h3 className="font-semibold text-surface-900 dark:text-white text-sm mb-1">{agent.role}</h3>
-                  <p className="text-xs text-surface-500 dark:text-surface-400 mb-3 leading-relaxed line-clamp-2">{agent.description}</p>
-                  
-                  {/* Running timer */}
-                  {status === 'running' && (
-                    <div className="flex items-center gap-2 mb-3 px-2 py-1.5 bg-primary-500/10 rounded-lg">
-                      <span className="text-xs text-primary-600 dark:text-primary-400 font-mono font-medium">
+
+                  <div>
+                    <h3 className={`font-display font-semibold text-sm mb-0.5 ${agent.textColor}`}>
+                      {agent.role}
+                    </h3>
+                    <p className="text-xs text-surface-500 leading-relaxed line-clamp-2">{agent.description}</p>
+                  </div>
+
+                  {isRunning && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <Activity className="w-3 h-3 text-primary-500 animate-pulse" />
+                      <span className="font-mono text-primary-600 dark:text-primary-400">
                         {agentStartTimes[agent.name]
                           ? `${Math.floor((Date.now() - agentStartTimes[agent.name]) / 1000)}s`
-                          : `${elapsedSeconds}s`
-                        }
+                          : `${elapsedSeconds}s`}
                       </span>
-                      <span className="text-xs text-primary-500 animate-pulse">analyzing…</span>
+                      <span className="text-surface-400 animate-pulse">analyzing…</span>
                     </div>
                   )}
-                  
-                  {/* Live log stream */}
-                  <div className="space-y-2 min-h-[80px]">
-                    {agentLogItems.length > 0 ? agentLogItems.map((log, i) => (
-                      <div key={i} className="flex items-start gap-2 animate-fade-in">
-                        <Zap className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-xs text-surface-600 dark:text-surface-300 leading-snug">{log.message}</span>
-                      </div>
-                    )) : (
-                      <p className="text-xs text-surface-400 italic">
-                        {status === 'idle' ? 'Waiting to start...' : status === 'completed' ? 'Analysis complete' : ''}
-                      </p>
-                    )}
-                  </div>
+
+                  {logs.length > 0 && (
+                    <div className="space-y-1.5">
+                      {logs.map((log, i) => (
+                        <div key={i} className="flex items-start gap-1.5 animate-fade-in">
+                          <Zap className="w-2.5 h-2.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                          <span className="text-[11px] text-surface-500 dark:text-surface-400 leading-snug">{log.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                
-                {/* Progress indicator */}
-                <div className="h-1 bg-surface-100 dark:bg-surface-800">
-                  {status === 'running' && (
-                    <div className={`h-full bg-gradient-to-r ${agent.color} animate-pulse`} style={{ width: '60%' }} />
-                  )}
-                  {status === 'completed' && (
-                    <div className="h-full bg-accent-500 w-full" />
-                  )}
+
+                <div className="h-0.5 bg-surface-100 dark:bg-surface-800">
+                  {isRunning && <div className={`h-full bg-gradient-to-r ${agent.gradient} animate-shimmer`} style={{ width: '65%' }} />}
+                  {isDone && <div className="h-full bg-accent-400 w-full transition-all duration-700" />}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Overall Progress Bar */}
+        {/* Progress bar */}
         {(isLoading || reviewPhase === 'done') && (
-          <div className="card p-5 mb-6 animate-fade-up">
+          <div className="card p-5 animate-fade-up">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 {reviewPhase === 'done' ? (
-                  <div className="p-2 bg-accent-500/10 rounded-lg">
+                  <div className="p-2 bg-accent-500/10 rounded-xl">
                     <CheckCircle className="w-5 h-5 text-accent-500" />
                   </div>
                 ) : (
-                  <div className="p-2 bg-primary-500/10 rounded-lg">
+                  <div className="p-2 bg-primary-500/10 rounded-xl">
                     <Loader2 className="w-5 h-5 text-primary-500 animate-spin" />
                   </div>
                 )}
                 <div>
-                  <p className="text-sm font-medium text-surface-900 dark:text-white">
-                    {reviewPhase === 'done' ? 'Review Complete' : currentAgent ? `Running ${currentAgent}` : 'Starting analysis...'}
+                  <p className="text-sm font-semibold text-surface-900 dark:text-white">
+                    {reviewPhase === 'done' ? 'Analysis Complete' : currentAgent ? `Running ${currentAgent}` : 'Starting…'}
                   </p>
-                  <p className="text-xs text-surface-500">{elapsedSeconds}s elapsed</p>
+                  <p className="text-xs text-surface-500 mt-0.5 font-mono">{elapsedSeconds}s elapsed</p>
                 </div>
               </div>
-              <span className="text-lg font-mono font-bold text-primary-600 dark:text-primary-400">{progress}%</span>
+              <span className="font-display text-2xl font-bold gradient-text">{progress}%</span>
             </div>
             <div className="progress-bar h-2">
               <div
-                className={`progress-bar-fill ${reviewPhase === 'done' ? '!bg-accent-500' : ''}`}
+                className={`progress-bar-fill ${reviewPhase === 'done' ? '!bg-accent-400' : ''}`}
                 style={{ width: `${progress}%` }}
               />
             </div>
           </div>
         )}
 
-        {/* Error Banner */}
+        {/* Error */}
         {reviewPhase === 'error' && error && (
-          <div className="card border-red-500/30 bg-red-500/5 p-5 mb-6 flex items-start gap-4 animate-fade-up">
-            <div className="p-2 bg-red-500/10 rounded-lg">
+          <div className="card border-red-500/30 bg-red-500/5 p-5 flex items-start gap-4 animate-fade-up">
+            <div className="p-2 bg-red-500/10 rounded-xl flex-shrink-0">
               <AlertCircle className="w-5 h-5 text-red-500" />
             </div>
             <div>
@@ -535,21 +485,20 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Result Card */}
+        {/* Result */}
         {reviewPhase === 'done' && reviewResult && (
           <div className="card overflow-hidden animate-fade-up">
-            {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-surface-200 dark:border-surface-800">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-accent-500/10 rounded-xl">
                   <CheckCircle className="w-6 h-6 text-accent-500" />
                 </div>
                 <div>
-                  <h2 className="font-semibold text-surface-900 dark:text-white text-lg">Analysis Complete</h2>
-                  <p className="text-sm text-surface-500 mt-0.5">
-                    {reviewResult.stats?.totalIssues ?? 0} issues found
+                  <h2 className="font-display text-lg font-bold text-surface-900 dark:text-white">Analysis Complete</h2>
+                  <p className="text-xs text-surface-500 mt-0.5">
+                    {reviewResult.stats?.totalIssues ?? 0} issues · {reviewResult.metadata?.filesReviewed ?? 0} files
                     {reviewResult.metadata?.overallRiskLevel && (
-                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                         reviewResult.metadata.overallRiskLevel === 'high' ? 'bg-red-500/10 text-red-500' :
                         reviewResult.metadata.overallRiskLevel === 'medium' ? 'bg-amber-500/10 text-amber-500' :
                         'bg-accent-500/10 text-accent-500'
@@ -557,96 +506,48 @@ export default function Dashboard() {
                         {reviewResult.metadata.overallRiskLevel} risk
                       </span>
                     )}
-                    {reviewResult.metadata?.overallConfidence && (
-                      <span className="ml-2 text-surface-400">{reviewResult.metadata.overallConfidence}% confidence</span>
-                    )}
                   </p>
                 </div>
               </div>
-              {/* Severity Pills */}
-              <div className="flex items-center gap-2">
-                {reviewResult.stats?.critical > 0 && (
-                  <span className="badge severity-critical">{reviewResult.stats.critical} critical</span>
-                )}
-                {reviewResult.stats?.high > 0 && (
-                  <span className="badge severity-high">{reviewResult.stats.high} high</span>
-                )}
-                {reviewResult.stats?.medium > 0 && (
-                  <span className="badge severity-medium">{reviewResult.stats.medium} medium</span>
-                )}
-                {reviewResult.stats?.low > 0 && (
-                  <span className="badge severity-low">{reviewResult.stats.low} low</span>
-                )}
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {reviewResult.stats?.critical > 0 && <span className="badge severity-critical">{reviewResult.stats.critical} critical</span>}
+                {reviewResult.stats?.high > 0 && <span className="badge severity-high">{reviewResult.stats.high} high</span>}
+                {reviewResult.stats?.medium > 0 && <span className="badge severity-medium">{reviewResult.stats.medium} med</span>}
+                {reviewResult.stats?.low > 0 && <span className="badge severity-low">{reviewResult.stats.low} low</span>}
               </div>
             </div>
-            
-            {/* Summary */}
+
             <div className="p-5 border-b border-surface-200 dark:border-surface-800 bg-surface-50 dark:bg-surface-900/50">
               <p className="text-sm text-surface-700 dark:text-surface-300 leading-relaxed">{reviewResult.summary}</p>
             </div>
-            
-            {/* Top Issues */}
+
             {reviewResult.issues?.length > 0 && (
               <div className="p-5">
-                <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-4">Top Issues</h3>
-                <div className="space-y-3">
+                <h3 className="text-[10px] font-semibold text-surface-400 uppercase tracking-widest mb-4">Top Issues</h3>
+                <div className="space-y-2">
                   {reviewResult.issues.slice(0, 5).map((issue: any, i: number) => (
-                    <div key={i} className="flex items-start gap-4 p-4 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700/50 hover:border-surface-300 dark:hover:border-surface-600 transition-colors">
-                      <div className="flex flex-col gap-1.5 flex-shrink-0">
-                        <span className={`badge ${
-                          issue.severity === 'critical' ? 'severity-critical' :
-                          issue.severity === 'high' ? 'severity-high' :
-                          issue.severity === 'medium' ? 'severity-medium' :
-                          'severity-low'
-                        }`}>{issue.severity}</span>
-                        {issue.confidence !== undefined && (
-                          <span className={`badge font-mono ${
-                            issue.confidence >= 80 ? 'badge-success' :
-                            issue.confidence >= 50 ? 'badge-warning' :
-                            'bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400'
-                          }`}>{issue.confidence}%</span>
-                        )}
-                      </div>
+                    <div key={i} className="flex items-start gap-3 p-3.5 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700/50 hover:border-primary-500/20 transition-all duration-200 scan-hover">
+                      <span className={`badge flex-shrink-0 mt-0.5 ${
+                        issue.severity === 'critical' ? 'severity-critical' :
+                        issue.severity === 'high' ? 'severity-high' :
+                        issue.severity === 'medium' ? 'severity-medium' : 'severity-low'
+                      }`}>{issue.severity}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-surface-800 dark:text-surface-200 leading-relaxed">{issue.message}</p>
                         {issue.file && (
-                          <p className="text-xs text-surface-500 mt-1.5 font-mono bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded inline-block">
-                            {issue.file}{issue.line ? `:${issue.line}` : ''}
-                          </p>
+                          <p className="text-[11px] text-surface-400 mt-1 font-mono">{issue.file}{issue.line ? `:${issue.line}` : ''}</p>
                         )}
                         {issue.suggestion && (
                           <p className="text-xs text-surface-500 mt-2 italic border-l-2 border-primary-500/30 pl-3">{issue.suggestion}</p>
-                        )}
-                        {issue.reasoning && (
-                          <details className="mt-3 group">
-                            <summary className="text-xs text-primary-600 dark:text-primary-400 cursor-pointer hover:text-primary-500 font-medium">
-                              View reasoning
-                            </summary>
-                            <p className="text-xs text-surface-500 mt-2 pl-3 border-l-2 border-surface-300 dark:border-surface-700">{issue.reasoning}</p>
-                          </details>
-                        )}
-                        {issue.evidence && issue.evidence.length > 0 && (
-                          <details className="mt-2">
-                            <summary className="text-xs text-surface-500 cursor-pointer hover:text-surface-400 font-medium">
-                              Evidence ({issue.evidence.length})
-                            </summary>
-                            <ul className="text-xs text-surface-500 mt-2 pl-3 border-l-2 border-surface-300 dark:border-surface-700 space-y-1">
-                              {issue.evidence.slice(0, 3).map((e: string, j: number) => (
-                                <li key={j} className="font-mono">{e}</li>
-                              ))}
-                            </ul>
-                          </details>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
                 {reviewResult.issues.length > 5 && (
-                  <button
-                    onClick={() => navigate(`/review/${reviewResult.id || ''}`)}
-                    className="btn-secondary mt-4 w-full"
-                  >
+                  <button onClick={() => navigate(`/review/${reviewResult.id || ''}`)} className="btn-secondary mt-4 w-full group">
                     View all {reviewResult.issues.length} issues
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 )}
               </div>
@@ -654,18 +555,22 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty state */}
         {reviewPhase === 'idle' && (
-          <div className="card p-12 text-center animate-fade-up">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center">
-              <Layers className="w-8 h-8 text-surface-400" />
+          <div className="card p-12 text-center animate-fade-up delay-200">
+            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center animate-float">
+              <Layers className="w-7 h-7 text-primary-500" />
             </div>
-            <h3 className="text-lg font-semibold text-surface-700 dark:text-surface-300 mb-2">Ready to Review</h3>
-            <p className="text-sm text-surface-500 max-w-sm mx-auto">
-              Select a repository and branch above, then click Start Review to begin AI-powered code analysis.
+            <h3 className="font-display text-xl font-bold text-surface-800 dark:text-surface-200 mb-2">
+              Ready to Analyze
+            </h3>
+            <p className="text-sm text-surface-500 max-w-xs mx-auto leading-relaxed">
+              Select a repository and branch above, then click{' '}
+              <strong className="text-surface-700 dark:text-surface-300">Run Review</strong> to begin.
             </p>
           </div>
         )}
+
       </div>
     </div>
   );
