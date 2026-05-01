@@ -224,8 +224,8 @@ export default function Dashboard() {
   const getAgentLogs = (agentName: string) => agentLogs.filter(l => l.agent === agentName).slice(-4);
 
   return (
-    <div className="min-h-full p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-full p-4 lg:p-5">
+      <div className="max-w-6xl mx-auto space-y-4">
 
         {/* Header */}
         <div className="flex items-start justify-between animate-fade-up">
@@ -262,8 +262,8 @@ export default function Dashboard() {
         </div>
 
         {/* Form */}
-        <div className="card p-5 animate-fade-up delay-75">
-          <form onSubmit={handleSubmit} className="flex items-end gap-4 flex-wrap">
+        <div className="card p-4 animate-fade-up delay-75">
+          <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
             <div>
               <label className="block text-[10px] font-semibold text-surface-400 dark:text-surface-600 uppercase tracking-widest mb-2">
                 Source
@@ -274,7 +274,7 @@ export default function Dashboard() {
                     key={type}
                     type="button"
                     onClick={() => setSourceType(type)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 ${
                       sourceType === type
                         ? 'bg-primary-500 text-white shadow-glow-sm'
                         : 'text-surface-500 hover:text-surface-800 dark:hover:text-surface-200 hover:bg-surface-200 dark:hover:bg-surface-700/60'
@@ -351,7 +351,7 @@ export default function Dashboard() {
               </>
             )}
 
-            <button type="submit" disabled={isLoading || !healthStatus?.ok} className="btn-primary px-6 py-2.5 self-end">
+            <button type="submit" disabled={isLoading || !healthStatus?.ok} className="btn-primary px-4 py-2 self-end">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               {isLoading ? 'Analyzing…' : 'Run Review'}
             </button>
@@ -381,7 +381,7 @@ export default function Dashboard() {
                   <div className="absolute inset-0 bg-gradient-to-b from-primary-500/5 to-transparent pointer-events-none" />
                 )}
 
-                <div className="p-4 space-y-3">
+                <div className="p-3 space-y-2">
                   <div className="flex items-start justify-between">
                     <div className={`p-2 rounded-lg bg-gradient-to-br ${agent.gradient}`}>
                       <Icon className="w-4 h-4 text-white" />
@@ -442,7 +442,7 @@ export default function Dashboard() {
 
         {/* Progress bar */}
         {(isLoading || reviewPhase === 'done') && (
-          <div className="card p-5 animate-fade-up">
+          <div className="card p-4 animate-fade-up">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 {reviewPhase === 'done' ? (
@@ -474,7 +474,7 @@ export default function Dashboard() {
 
         {/* Error */}
         {reviewPhase === 'error' && error && (
-          <div className="card border-red-500/30 bg-red-500/5 p-5 flex items-start gap-4 animate-fade-up">
+          <div className="card border-red-500/30 bg-red-500/5 p-4 flex items-start gap-3 animate-fade-up">
             <div className="p-2 bg-red-500/10 rounded-xl flex-shrink-0">
               <AlertCircle className="w-5 h-5 text-red-500" />
             </div>
@@ -488,8 +488,8 @@ export default function Dashboard() {
         {/* Result */}
         {reviewPhase === 'done' && reviewResult && (
           <div className="card overflow-hidden animate-fade-up">
-            <div className="flex items-center justify-between p-5 border-b border-surface-200 dark:border-surface-800">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between p-4 border-b border-surface-200 dark:border-surface-800">
+              <div className="flex items-center gap-3">
                 <div className="p-3 bg-accent-500/10 rounded-xl">
                   <CheckCircle className="w-6 h-6 text-accent-500" />
                 </div>
@@ -517,13 +517,39 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="p-5 border-b border-surface-200 dark:border-surface-800 bg-surface-50 dark:bg-surface-900/50">
+            {reviewResult.metadata?.prIntent?.primaryIntent && (
+              <div className="p-4 border-b border-surface-200 dark:border-surface-800 bg-primary-500/5">
+                <p className="text-[10px] font-semibold text-primary-500 uppercase tracking-widest mb-2">PR Intent</p>
+                <p className="text-sm font-medium text-surface-900 dark:text-white leading-snug mb-2">
+                  {reviewResult.metadata.prIntent.primaryIntent}
+                </p>
+                {reviewResult.metadata.prIntent.expectedBehaviors?.length > 0 && (
+                  <ul className="space-y-1">
+                    {reviewResult.metadata.prIntent.expectedBehaviors.slice(0, 3).map((b: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-surface-500 dark:text-surface-400">
+                        <span className="mt-1 w-1 h-1 rounded-full bg-primary-400 flex-shrink-0" />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {reviewResult.metadata.prIntent.breakingChanges?.length > 0 && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                    <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                    <span>{reviewResult.metadata.prIntent.breakingChanges[0]}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="p-4 border-b border-surface-200 dark:border-surface-800 bg-surface-50 dark:bg-surface-900/50">
+              <p className="text-[10px] font-semibold text-surface-400 uppercase tracking-widest mb-2">Summary</p>
               <p className="text-sm text-surface-700 dark:text-surface-300 leading-relaxed">{reviewResult.summary}</p>
             </div>
 
             {reviewResult.issues?.length > 0 && (
-              <div className="p-5">
-                <h3 className="text-[10px] font-semibold text-surface-400 uppercase tracking-widest mb-4">Top Issues</h3>
+              <div className="p-4">
+                <h3 className="text-[10px] font-semibold text-surface-400 uppercase tracking-widest mb-3">Top Issues</h3>
                 <div className="space-y-2">
                   {reviewResult.issues.slice(0, 5).map((issue: any, i: number) => (
                     <div key={i} className="flex items-start gap-3 p-3.5 bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700/50 hover:border-primary-500/20 transition-all duration-200 scan-hover">
@@ -557,8 +583,8 @@ export default function Dashboard() {
 
         {/* Empty state */}
         {reviewPhase === 'idle' && (
-          <div className="card p-12 text-center animate-fade-up delay-200">
-            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center animate-float">
+          <div className="card p-8 text-center animate-fade-up delay-200">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center animate-float">
               <Layers className="w-7 h-7 text-primary-500" />
             </div>
             <h3 className="font-display text-xl font-bold text-surface-800 dark:text-surface-200 mb-2">

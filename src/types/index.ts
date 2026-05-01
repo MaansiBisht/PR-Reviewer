@@ -62,6 +62,12 @@ export interface ReviewMetadata {
   agentResults?: AgentResultSummary[];
   overallConfidence?: number;  // Aggregated confidence score
   projectContext?: ProjectContext;
+  prIntent?: {
+    primaryIntent: string;
+    secondaryIntents: string[];
+    expectedBehaviors: string[];
+    breakingChanges: string[];
+  };
 }
 
 export interface ProjectContext {

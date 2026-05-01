@@ -101,6 +101,9 @@ export class SynthesisAgent extends BaseAgent {
     // Calculate overall confidence from all agents
     const overallConfidence = this.calculateAggregateConfidence(input.agentResults);
 
+    const fvResult = input.agentResults.find(r => r.agentName === 'FeatureVerificationAgent');
+    const prIntent = fvResult?.metadata?.intent ?? undefined;
+
     return {
       summary: llmSynthesis?.executiveSummary || this.generateFallbackSummary(input.agentResults),
       issues: finalIssues,
@@ -112,6 +115,7 @@ export class SynthesisAgent extends BaseAgent {
         overallRiskLevel: llmSynthesis?.overallRiskLevel || this.calculateRiskLevel(stats),
         approvalRecommendation: llmSynthesis?.approvalRecommendation || this.calculateApprovalRecommendation(stats),
         overallConfidence,
+        prIntent,
         agentResults: input.agentResults.map(r => ({
           agent: r.agentName,
           issueCount: r.issues.length,
@@ -168,6 +172,13 @@ export class SynthesisAgent extends BaseAgent {
         
         if (this.severityToNumber(issue.severity) > this.severityToNumber(existing.severity)) {
           existing.severity = issue.severity;
+        }
+
+        // Merge suggestions from both agents
+        if (issue.suggestion && issue.suggestion !== existing.suggestion) {
+          existing.suggestion = existing.suggestion
+            ? `${existing.suggestion} | ${issue.suggestion}`
+            : issue.suggestion;
         }
 
         // Merge evidence
