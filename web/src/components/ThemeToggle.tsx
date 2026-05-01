@@ -11,7 +11,7 @@ export default function ThemeToggle() {
   ];
 
   return (
-    <div className="flex items-center gap-1 p-1 bg-surface-800/50 rounded-xl">
+    <div className="flex items-center gap-1 p-1 bg-surface-100 dark:bg-surface-800/50 rounded-xl">
       {options.map(({ value, icon: Icon, label }) => (
         <button
           key={value}
@@ -19,7 +19,7 @@ export default function ThemeToggle() {
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
             theme === value
               ? 'bg-primary-600 text-white shadow-glow'
-              : 'text-surface-400 hover:text-surface-200 hover:bg-surface-700/50'
+              : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200 hover:bg-surface-200 dark:hover:bg-surface-700/50'
           }`}
           title={label}
         >
