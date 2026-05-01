@@ -1,6 +1,6 @@
 import { BaseAgent, AgentContext, AgentResult, AgentConfig, AgentLogCallback } from './base-agent';
 import { Config, ReviewIssue } from '../types';
-import { OllamaClient } from '../services/ollama';
+import { LLMProvider } from '../services/llm';
 import { logger } from '../utils/logger';
 
 const SECURITY_AGENT_CONFIG: AgentConfig = {
@@ -113,8 +113,8 @@ export class SecurityAgent extends BaseAgent {
     },
   ];
 
-  constructor(config: Config, ollama: OllamaClient, logCallback?: AgentLogCallback) {
-    super('SecurityAgent', config, ollama, SECURITY_AGENT_CONFIG, logCallback);
+  constructor(config: Config, llm: LLMProvider, logCallback?: AgentLogCallback) {
+    super('SecurityAgent', config, llm, SECURITY_AGENT_CONFIG, logCallback);
   }
 
   async analyze(context: AgentContext): Promise<AgentResult> {

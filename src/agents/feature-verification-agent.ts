@@ -1,6 +1,6 @@
 import { BaseAgent, AgentContext, AgentResult, AgentConfig, AgentLogCallback } from './base-agent';
 import { Config, ReviewIssue } from '../types';
-import { OllamaClient } from '../services/ollama';
+import { LLMProvider } from '../services/llm';
 import { logger } from '../utils/logger';
 
 const FEATURE_VERIFICATION_AGENT_CONFIG: AgentConfig = {
@@ -69,8 +69,8 @@ interface FeatureAnalysis {
 }
 
 export class FeatureVerificationAgent extends BaseAgent {
-  constructor(config: Config, ollama: OllamaClient, logCallback?: AgentLogCallback) {
-    super('FeatureVerificationAgent', config, ollama, FEATURE_VERIFICATION_AGENT_CONFIG, logCallback);
+  constructor(config: Config, llm: LLMProvider, logCallback?: AgentLogCallback) {
+    super('FeatureVerificationAgent', config, llm, FEATURE_VERIFICATION_AGENT_CONFIG, logCallback);
   }
 
   async analyze(context: AgentContext): Promise<AgentResult> {

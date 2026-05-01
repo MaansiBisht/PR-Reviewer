@@ -1,4 +1,4 @@
-import { OllamaClient } from '../services/ollama';
+import { LLMProvider } from '../services/llm';
 import { Config, ReviewIssue, ProjectContext } from '../types';
 import { logger } from '../utils/logger';
 import { getResponseCache } from '../services/response-cache';
@@ -53,7 +53,7 @@ export interface AgentResult {
 }
 
 export abstract class BaseAgent {
-  protected ollama: OllamaClient;
+  protected llm: LLMProvider;
   protected config: Config;
   protected name: string;
   protected agentConfig: AgentConfig;
@@ -63,13 +63,13 @@ export abstract class BaseAgent {
   constructor(
     name: string,
     config: Config,
-    ollama: OllamaClient,
+    llm: LLMProvider,
     agentConfig: AgentConfig,
     logCallback?: AgentLogCallback
   ) {
     this.name = name;
     this.config = config;
-    this.ollama = ollama;
+    this.llm = llm;
     this.agentConfig = agentConfig;
     this.logCallback = logCallback;
     this.verbose = agentConfig.verbose ?? false;
@@ -131,7 +131,7 @@ export abstract class BaseAgent {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         this.log('llm_request', `Sending request to LLM (attempt ${attempt}/${maxRetries})`);
-        const response = await this.ollama.generate(prompt);
+        const response = await this.llm.generate(prompt);
         this.log('llm_response', `Received response from LLM`, { responseLength: response.length });
         
         // Cache the successful response

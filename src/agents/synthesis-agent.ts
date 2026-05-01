@@ -1,6 +1,6 @@
 import { BaseAgent, AgentContext, AgentResult, AgentConfig, AgentLogCallback } from './base-agent';
 import { Config, ReviewIssue, ReviewResult, ReviewStats, ReviewMetadata } from '../types';
-import { OllamaClient } from '../services/ollama';
+import { LLMProvider } from '../services/llm';
 import { logger } from '../utils/logger';
 
 const SYNTHESIS_AGENT_CONFIG: AgentConfig = {
@@ -53,8 +53,8 @@ interface SynthesizedAnalysis {
 }
 
 export class SynthesisAgent extends BaseAgent {
-  constructor(config: Config, ollama: OllamaClient, logCallback?: AgentLogCallback) {
-    super('SynthesisAgent', config, ollama, SYNTHESIS_AGENT_CONFIG, logCallback);
+  constructor(config: Config, llm: LLMProvider, logCallback?: AgentLogCallback) {
+    super('SynthesisAgent', config, llm, SYNTHESIS_AGENT_CONFIG, logCallback);
   }
 
   async analyze(context: AgentContext): Promise<AgentResult> {

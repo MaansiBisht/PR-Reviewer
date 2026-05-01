@@ -1,5 +1,5 @@
 import { Config, ReviewResult, PRSource, ProjectContext } from '../types';
-import { OllamaClient, createOllamaClient } from '../services/ollama';
+import { LLMProvider, OllamaProvider, createLLMProvider } from '../services/llm';
 import { createGitService, GitService } from '../services/git';
 import { 
   BaseAgent, 
@@ -44,7 +44,7 @@ export interface OrchestratorOptions {
 
 export class Orchestrator {
   private config: Config;
-  private ollama: OllamaClient;
+  private llm: LLMProvider;
   private git: GitService;
   private agents: BaseAgent[] = [];
   private synthesisAgent: SynthesisAgent;
@@ -63,9 +63,9 @@ export class Orchestrator {
       verbose: options.verbose ?? false,
     };
     
-    this.ollama = createOllamaClient(config);
+    this.llm = createLLMProvider(config);
     this.git = createGitService();
-    this.synthesisAgent = new SynthesisAgent(config, this.ollama, this.createLogCallback());
+    this.synthesisAgent = new SynthesisAgent(config, this.llm, this.createLogCallback());
     
     this.initializeAgents();
   }
@@ -83,9 +83,9 @@ export class Orchestrator {
     const logCallback = this.createLogCallback();
     
     const agentMap: Record<string, () => BaseAgent> = {
-      'security': () => new SecurityAgent(this.config, this.ollama, logCallback),
-      'complexity': () => new ComplexityAgent(this.config, this.ollama, logCallback),
-      'feature-verification': () => new FeatureVerificationAgent(this.config, this.ollama, logCallback),
+      'security': () => new SecurityAgent(this.config, this.llm, logCallback),
+      'complexity': () => new ComplexityAgent(this.config, this.llm, logCallback),
+      'feature-verification': () => new FeatureVerificationAgent(this.config, this.llm, logCallback),
     };
 
     for (const agentName of this.options.agents || []) {
@@ -97,24 +97,24 @@ export class Orchestrator {
   }
 
   async checkPrerequisites(): Promise<{ ok: boolean; message: string }> {
-    const available = await this.ollama.isAvailable();
+    const available = await this.llm.isAvailable();
     if (!available) {
-      return {
-        ok: false,
-        message: `Ollama is not running at ${this.config.ollamaUrl}. Please start Ollama first.`,
-      };
+      if (this.config.provider === 'ollama') {
+        return { ok: false, message: `Ollama is not running at ${this.config.ollamaUrl}. Please start Ollama first.` };
+      }
+      return { ok: false, message: `${this.config.provider} provider is not reachable. Check your API key.` };
     }
 
-    const hasModel = await this.ollama.hasModel(this.config.model);
-    if (!hasModel) {
-      const models = await this.ollama.listModels();
-      return {
-        ok: false,
-        message: `Model "${this.config.model}" not found. Available models: ${models.join(', ') || 'none'}`,
-      };
+    if (this.config.provider === 'ollama') {
+      const ollamaProvider = this.llm as OllamaProvider;
+      const hasModel = await ollamaProvider.hasModel(this.config.model);
+      if (!hasModel) {
+        const models = await ollamaProvider.listModels();
+        return { ok: false, message: `Model "${this.config.model}" not found. Available: ${models.join(', ') || 'none'}` };
+      }
     }
 
-    return { ok: true, message: 'All prerequisites met.' };
+    return { ok: true, message: `Provider: ${this.config.provider} / Model: ${this.llm.getModelName()}` };
   }
 
   async reviewPR(prSource: PRSource): Promise<ReviewResult> {

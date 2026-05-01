@@ -1,6 +1,6 @@
 import { BaseAgent, AgentContext, AgentResult, AgentConfig, AgentLogCallback } from './base-agent';
 import { Config, ReviewIssue } from '../types';
-import { OllamaClient } from '../services/ollama';
+import { LLMProvider } from '../services/llm';
 import { logger } from '../utils/logger';
 
 const COMPLEXITY_AGENT_CONFIG: AgentConfig = {
@@ -67,8 +67,8 @@ export class ComplexityAgent extends BaseAgent {
   private readonly LOC_THRESHOLD = 50;
   private readonly PARAM_THRESHOLD = 5;
 
-  constructor(config: Config, ollama: OllamaClient, logCallback?: AgentLogCallback) {
-    super('ComplexityAgent', config, ollama, COMPLEXITY_AGENT_CONFIG, logCallback);
+  constructor(config: Config, llm: LLMProvider, logCallback?: AgentLogCallback) {
+    super('ComplexityAgent', config, llm, COMPLEXITY_AGENT_CONFIG, logCallback);
   }
 
   async analyze(context: AgentContext): Promise<AgentResult> {

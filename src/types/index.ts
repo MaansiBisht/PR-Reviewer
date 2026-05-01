@@ -135,9 +135,14 @@ export interface CacheOptions {
   ttl?: number;
 }
 
+export type LLMProviderType = 'ollama' | 'claude' | 'openai';
+
 export interface Config {
+  provider: LLMProviderType;
   ollamaUrl: string;
   model: string;
+  cloudModel?: string;
+  apiKey?: string;
   baseBranch: string;
   maxChunkSize: number;
   maxRetries: number;
@@ -160,6 +165,7 @@ export interface ProjectConfig {
 }
 
 export const DEFAULT_CONFIG: Config = {
+  provider: 'ollama',
   ollamaUrl: 'http://localhost:11434',
   model: 'qwen2.5-coder:7b',
   baseBranch: 'main',
