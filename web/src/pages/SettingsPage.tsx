@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, RefreshCw, CheckCircle, Cpu, Cloud, Key, Eye, EyeOff } from 'lucide-react';
+import { Save, RefreshCw, CheckCircle, Cpu, Cloud, Key, Eye, EyeOff, Github, GitBranch } from 'lucide-react';
 import { reviewApi } from '../api/client';
 
 type ProviderType = 'ollama' | 'claude' | 'openai';
@@ -10,6 +10,9 @@ interface Config {
   model: string;
   cloudModel: string;
   apiKey: string;
+  githubToken: string;
+  bitbucketToken: string;
+  bitbucketUsername: string;
   baseBranch: string;
   maxChunkSize: number;
   agents: string[];
@@ -25,6 +28,9 @@ const defaultConfig: Config = {
   model: 'qwen2.5-coder:7b',
   cloudModel: '',
   apiKey: '',
+  githubToken: '',
+  bitbucketToken: '',
+  bitbucketUsername: '',
   baseBranch: 'main',
   maxChunkSize: 4000,
   agents: ['security', 'complexity', 'feature-verification'],
@@ -58,6 +64,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showGithubToken, setShowGithubToken] = useState(false);
+  const [showBitbucketToken, setShowBitbucketToken] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
 
@@ -284,8 +292,102 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Agent Selection */}
+        {/* Source Control Tokens */}
         <section className="card p-6 animate-fade-up" style={{ animationDelay: '100ms' }}>
+          <h2 className="text-base font-semibold text-surface-900 dark:text-white mb-5 flex items-center gap-2">
+            <div className="p-2 bg-surface-500/10 rounded-lg">
+              <GitBranch className="w-4 h-4 text-surface-500 dark:text-surface-400" />
+            </div>
+            Source Control
+          </h2>
+          <div className="space-y-6">
+            {/* GitHub */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Github className="w-4 h-4 text-surface-600 dark:text-surface-400" />
+                <span className="text-sm font-semibold text-surface-700 dark:text-surface-300">GitHub</span>
+              </div>
+              <label className="flex items-center gap-2 text-sm font-medium text-surface-600 dark:text-surface-300 mb-2">
+                <Key className="w-3.5 h-3.5" />
+                Personal Access Token
+              </label>
+              <div className="relative">
+                <input
+                  type={showGithubToken ? 'text' : 'password'}
+                  value={config.githubToken}
+                  onChange={(e) => setConfig({ ...config, githubToken: e.target.value })}
+                  className="input font-mono pr-10"
+                  placeholder="ghp_..."
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowGithubToken(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
+                >
+                  {showGithubToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-surface-500 mt-1.5">
+                Needs <code className="bg-surface-100 dark:bg-surface-800 px-1 rounded">repo</code> scope. Generate at GitHub → Settings → Developer settings → Personal access tokens.
+              </p>
+            </div>
+
+            <div className="h-px bg-surface-200 dark:bg-surface-700" />
+
+            {/* Bitbucket */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <GitBranch className="w-4 h-4 text-surface-600 dark:text-surface-400" />
+                <span className="text-sm font-semibold text-surface-700 dark:text-surface-300">Bitbucket</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-surface-600 dark:text-surface-300 mb-2">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={config.bitbucketUsername}
+                    onChange={(e) => setConfig({ ...config, bitbucketUsername: e.target.value })}
+                    className="input"
+                    placeholder="your-bitbucket-username"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-surface-600 dark:text-surface-300 mb-2">
+                    <Key className="w-3.5 h-3.5" />
+                    App Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showBitbucketToken ? 'text' : 'password'}
+                      value={config.bitbucketToken}
+                      onChange={(e) => setConfig({ ...config, bitbucketToken: e.target.value })}
+                      className="input font-mono pr-10"
+                      placeholder="App password"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowBitbucketToken(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
+                    >
+                      {showBitbucketToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-surface-500 mt-2">
+                Create an App Password at Bitbucket → Personal settings → App passwords with <code className="bg-surface-100 dark:bg-surface-800 px-1 rounded">Repositories: Read</code> and <code className="bg-surface-100 dark:bg-surface-800 px-1 rounded">Pull requests: Read</code>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Agent Selection */}
+        <section className="card p-6 animate-fade-up" style={{ animationDelay: '200ms' }}>
           <h2 className="text-base font-semibold text-surface-900 dark:text-white mb-5">
             Active Agents
           </h2>
@@ -324,7 +426,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Review Focus */}
-        <section className="card p-6 animate-fade-up" style={{ animationDelay: '200ms' }}>
+        <section className="card p-6 animate-fade-up" style={{ animationDelay: '300ms' }}>
           <h2 className="text-base font-semibold text-surface-900 dark:text-white mb-5">
             Review Focus
           </h2>
@@ -371,7 +473,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Git Settings */}
-        <section className="card p-6 animate-fade-up" style={{ animationDelay: '300ms' }}>
+        <section className="card p-6 animate-fade-up" style={{ animationDelay: '400ms' }}>
           <h2 className="text-base font-semibold text-surface-900 dark:text-white mb-5">
             Git Settings
           </h2>

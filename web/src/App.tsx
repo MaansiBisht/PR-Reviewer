@@ -6,6 +6,7 @@ import ReviewPage from './pages/ReviewPage';
 import SettingsPage from './pages/SettingsPage';
 import HistoryPage from './pages/HistoryPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import PRBrowserPage from './pages/PRBrowserPage';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/prs" element={<PRBrowserPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/review/:id" element={<ReviewPage />} />

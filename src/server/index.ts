@@ -107,6 +107,9 @@ export function createServer(config: Config) {
     if (updates.provider) config.provider = updates.provider;
     if (updates.apiKey !== undefined) config.apiKey = updates.apiKey;
     if (updates.cloudModel) config.cloudModel = updates.cloudModel;
+    if (updates.githubToken !== undefined) config.githubToken = updates.githubToken;
+    if (updates.bitbucketToken !== undefined) config.bitbucketToken = updates.bitbucketToken;
+    if (updates.bitbucketUsername !== undefined) config.bitbucketUsername = updates.bitbucketUsername;
     if (updates.model) config.model = updates.model;
     if (updates.ollamaUrl) config.ollamaUrl = updates.ollamaUrl;
     if (updates.baseBranch) config.baseBranch = updates.baseBranch;
@@ -315,6 +318,8 @@ export function createServer(config: Config) {
     res.json(getResponseCache().getStats());
   });
 
+  addPRBrowserRoutes(app, config);
+
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     logger.error(`Server error: ${err.message}`);
     res.status(500).json({ error: err.message });
@@ -438,6 +443,109 @@ function findGitRepos(searchPath: string, maxDepth: number): string[] {
 
   scan(searchPath, 0);
   return repos;
+}
+
+function createGitHubClient(token: string) {
+  return axios.create({
+    baseURL: 'https://api.github.com',
+    headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': `Bearer ${token}` },
+  });
+}
+
+function createBitbucketClient(token: string) {
+  return axios.create({
+    baseURL: 'https://api.bitbucket.org/2.0',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+}
+
+function addPRBrowserRoutes(app: ReturnType<typeof express>, config: Config) {
+  // ── GitHub ──────────────────────────────────────────────────────────────
+  app.get('/api/github/repos', async (_req: Request, res: Response) => {
+    if (!config.githubToken) { res.status(400).json({ error: 'GitHub token not configured' }); return; }
+    try {
+      const gh = createGitHubClient(config.githubToken);
+      const response = await gh.get('/user/repos', { params: { sort: 'updated', per_page: 50, type: 'all' } });
+      const repos = response.data.map((r: { full_name: string; description: string; private: boolean; open_issues_count: number }) => ({
+        fullName: r.full_name,
+        description: r.description,
+        private: r.private,
+        openPRs: r.open_issues_count,
+      }));
+      res.json({ repos });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.get('/api/github/repos/:owner/:repo/pulls', async (req: Request, res: Response) => {
+    if (!config.githubToken) { res.status(400).json({ error: 'GitHub token not configured' }); return; }
+    try {
+      const { owner, repo } = req.params;
+      const gh = createGitHubClient(config.githubToken);
+      const response = await gh.get(`/repos/${owner}/${repo}/pulls`, { params: { state: 'open', per_page: 50 } });
+      const pulls = response.data.map((pr: {
+        number: number; title: string; user: { login: string };
+        head: { ref: string }; base: { ref: string }; created_at: string; html_url: string;
+        labels: { name: string }[];
+      }) => ({
+        number: pr.number,
+        title: pr.title,
+        author: pr.user.login,
+        head: pr.head.ref,
+        base: pr.base.ref,
+        createdAt: pr.created_at,
+        url: pr.html_url,
+        labels: pr.labels.map((l: { name: string }) => l.name),
+      }));
+      res.json({ pulls, owner, repo });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // ── Bitbucket ────────────────────────────────────────────────────────────
+  app.get('/api/bitbucket/repos', async (_req: Request, res: Response) => {
+    if (!config.bitbucketToken) { res.status(400).json({ error: 'Bitbucket token not configured' }); return; }
+    try {
+      const bb = createBitbucketClient(config.bitbucketToken);
+      const response = await bb.get('/repositories', { params: { role: 'member', pagelen: 50 } });
+      const repos = response.data.values.map((r: { full_name: string; description: string; is_private: boolean }) => ({
+        fullName: r.full_name,
+        description: r.description,
+        private: r.is_private,
+      }));
+      res.json({ repos });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.get('/api/bitbucket/repos/:workspace/:repo/pulls', async (req: Request, res: Response) => {
+    if (!config.bitbucketToken) { res.status(400).json({ error: 'Bitbucket token not configured' }); return; }
+    try {
+      const { workspace, repo } = req.params;
+      const bb = createBitbucketClient(config.bitbucketToken);
+      const response = await bb.get(`/repositories/${workspace}/${repo}/pullrequests`, { params: { state: 'OPEN' } });
+      const pulls = response.data.values.map((pr: {
+        id: number; title: string; author: { display_name: string };
+        source: { branch: { name: string } }; destination: { branch: { name: string } };
+        created_on: string; links: { html: { href: string } };
+      }) => ({
+        number: pr.id,
+        title: pr.title,
+        author: pr.author.display_name,
+        head: pr.source.branch.name,
+        base: pr.destination.branch.name,
+        createdAt: pr.created_on,
+        url: pr.links.html.href,
+        labels: [],
+      }));
+      res.json({ pulls, workspace, repo });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
 }
 
 export function startServer(config: Config, port: number = 3001) {

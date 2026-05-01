@@ -143,6 +143,9 @@ export interface Config {
   model: string;
   cloudModel?: string;
   apiKey?: string;
+  githubToken?: string;
+  bitbucketToken?: string;
+  bitbucketUsername?: string;
   baseBranch: string;
   maxChunkSize: number;
   maxRetries: number;

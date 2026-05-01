@@ -98,6 +98,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
+    { path: '/prs', icon: GitPullRequest, label: 'PR Browser' },
     { path: '/history', icon: Clock, label: 'History' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/settings', icon: Settings, label: 'Settings' },
