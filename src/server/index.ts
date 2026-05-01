@@ -320,6 +320,15 @@ export function createServer(config: Config) {
 
   addPRBrowserRoutes(app, config);
 
+  // Serve compiled React frontend in production (web/dist must exist)
+  const webDist = path.join(__dirname, '../../web/dist');
+  if (fs.existsSync(webDist)) {
+    app.use(express.static(webDist));
+    app.get('*', (_req: Request, res: Response) => {
+      res.sendFile(path.join(webDist, 'index.html'));
+    });
+  }
+
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     logger.error(`Server error: ${err.message}`);
     res.status(500).json({ error: err.message });

@@ -1,0 +1,56 @@
+services:
+  app:
+    build: .
+    container_name: pr-reviewer-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    expose:
+      - "3001"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  nginx:
+    image: nginx:alpine
+    container_name: pr-reviewer-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - certbot-www:/var/www/certbot:ro
+    depends_on:
+      - app
+    networks:
+      - internal
+
+  # Optional: local Ollama — enable with: docker compose --profile local-llm up
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pr-reviewer-ollama
+    profiles: ["local-llm"]
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    expose:
+      - "11434"
+    networks:
+      - internal
+
+volumes:
+  ollama-data:
+  certbot-www:
+
+networks:
+  internal:
+    driver: bridge
