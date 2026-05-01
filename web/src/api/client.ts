@@ -63,7 +63,7 @@ export const reviewApi = {
     return response.data;
   },
 
-  checkHealth: async (): Promise<{ ollama: boolean; model: string }> => {
+  checkHealth: async (): Promise<{ ok: boolean; provider: string; model: string; message: string }> => {
     const response = await api.get('/health');
     return response.data;
   },

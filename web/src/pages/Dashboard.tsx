@@ -79,7 +79,7 @@ export default function Dashboard() {
     repo: '',
     prNumber: '',
   });
-  const [healthStatus, setHealthStatus] = useState<{ ollama: boolean; model: string } | null>(null);
+  const [healthStatus, setHealthStatus] = useState<{ ok: boolean; provider: string; model: string; message: string } | null>(null);
   const [currentAgent, setCurrentAgent] = useState<string | null>(null);
   const [agentStatuses, setAgentStatuses] = useState<Record<string, 'idle' | 'running' | 'completed' | 'error'>>({});
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
@@ -99,7 +99,7 @@ export default function Dashboard() {
       const status = await reviewApi.checkHealth();
       setHealthStatus(status);
     } catch {
-      setHealthStatus({ ollama: false, model: '' });
+      setHealthStatus({ ok: false, provider: 'unknown', model: '', message: 'Connection failed' });
     }
   };
 
@@ -246,7 +246,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {healthStatus?.ollama ? (
+            {healthStatus?.ok ? (
               <div className="flex items-center gap-2 px-4 py-2 bg-accent-500/10 border border-accent-500/20 rounded-xl">
                 <span className="w-2 h-2 bg-accent-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                 <span className="text-sm font-medium text-accent-600 dark:text-accent-400">Connected</span>
@@ -255,6 +255,11 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-red-500" />
                 <span className="text-sm font-medium text-red-600 dark:text-red-400">Offline</span>
+              </div>
+            )}
+            {healthStatus?.provider && (
+              <div className="px-4 py-2 bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl">
+                <span className="text-sm font-mono text-surface-600 dark:text-surface-300 capitalize">{healthStatus.provider}</span>
               </div>
             )}
             {healthStatus?.model && (
@@ -387,7 +392,7 @@ export default function Dashboard() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading || !healthStatus?.ollama}
+              disabled={isLoading || !healthStatus?.ok}
               className="btn-primary px-6 py-2.5 shadow-glow"
             >
               {isLoading ? (
