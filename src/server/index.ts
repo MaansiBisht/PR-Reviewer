@@ -37,15 +37,16 @@ export function createServer(config: Config) {
     try {
       const orchestrator = createOrchestrator(config);
       const prereq = await orchestrator.checkPrerequisites();
-      
       res.json({
-        ollama: prereq.ok,
-        model: config.model,
+        ok: prereq.ok,
+        provider: config.provider,
+        model: config.provider === 'ollama' ? config.model : (config.cloudModel || ''),
         message: prereq.message,
       });
     } catch (error) {
       res.json({
-        ollama: false,
+        ok: false,
+        provider: config.provider,
         model: config.model,
         message: (error as Error).message,
       });
@@ -82,10 +83,14 @@ export function createServer(config: Config) {
   });
 
   app.get('/api/models', async (_req: Request, res: Response) => {
+    if (config.provider !== 'ollama') {
+      res.json({ models: [], provider: config.provider });
+      return;
+    }
     try {
       const response = await axios.get(`${config.ollamaUrl}/api/tags`);
       const models: string[] = (response.data.models || []).map((m: { name: string }) => m.name);
-      res.json({ models });
+      res.json({ models, provider: 'ollama' });
     } catch (error) {
       res.status(500).json({ error: (error as Error).message, models: [] });
     }
@@ -99,11 +104,15 @@ export function createServer(config: Config) {
 
   app.put('/api/config', (req: Request, res: Response) => {
     const updates = req.body as Partial<Config>;
+    if (updates.provider) config.provider = updates.provider;
+    if (updates.apiKey !== undefined) config.apiKey = updates.apiKey;
+    if (updates.cloudModel) config.cloudModel = updates.cloudModel;
     if (updates.model) config.model = updates.model;
     if (updates.ollamaUrl) config.ollamaUrl = updates.ollamaUrl;
     if (updates.baseBranch) config.baseBranch = updates.baseBranch;
     if (updates.maxChunkSize) config.maxChunkSize = updates.maxChunkSize;
-    res.json({ success: true, config });
+    const { apiKey: _apiKey, ...safeConfig } = config;
+    res.json({ success: true, config: safeConfig });
   });
 
   app.post('/api/reviews', async (req: Request, res: Response) => {

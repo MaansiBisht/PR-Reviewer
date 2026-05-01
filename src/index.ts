@@ -25,9 +25,18 @@ function buildConfig(options: Record<string, unknown>): Config {
     : options.html ? 'html'
     : 'cli';
 
+  const envProvider = process.env.LLM_PROVIDER as Config['provider'] | undefined;
+  const envApiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY;
+  const envCloudModel = process.env.CLOUD_MODEL;
+  const envOllamaUrl = process.env.OLLAMA_URL;
+  const envOllamaModel = process.env.OLLAMA_MODEL;
+
   const cliOptions: Partial<Config> = {
-    ollamaUrl: options.url as string,
-    model: options.model as string,
+    provider: envProvider,
+    apiKey: envApiKey,
+    cloudModel: envCloudModel,
+    ollamaUrl: (options.url as string) || envOllamaUrl,
+    model: (options.model as string) || envOllamaModel,
     baseBranch: options.base as string,
     maxChunkSize: options.chunkSize ? parseInt(options.chunkSize as string, 10) : undefined,
     output: {
