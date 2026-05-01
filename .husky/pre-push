@@ -1,25 +1,5 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🔍 Running AI code review before push..."
-
-# Get the remote and branch being pushed to
-remote="$1"
-url="$2"
-
-# Run the PR reviewer
-# --fail-on-high will exit with code 1 if high severity issues are found
-npx pr-review --fail-on-high
-
-exit_code=$?
-
-if [ $exit_code -ne 0 ]; then
-    echo ""
-    echo "❌ Push blocked due to code review issues."
-    echo "   Please fix the high severity issues and try again."
-    echo "   To bypass this check, use: git push --no-verify"
-    exit 1
-fi
-
-echo "✅ Code review passed!"
+echo "✅ Pre-push hook: trigger reviews from the PR Reviewer web UI."
 exit 0

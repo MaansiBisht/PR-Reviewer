@@ -66,22 +66,7 @@ cat > .husky/pre-push << 'EOF'
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🔍 Running AI code review before push..."
-
-# Run the PR reviewer
-npx pr-review --fail-on-high
-
-exit_code=$?
-
-if [ $exit_code -ne 0 ]; then
-    echo ""
-    echo "❌ Push blocked due to code review issues."
-    echo "   Please fix the high severity issues and try again."
-    echo "   To bypass this check, use: git push --no-verify"
-    exit 1
-fi
-
-echo "✅ Code review passed!"
+echo "✅ Pre-push hook: trigger reviews from the PR Reviewer web UI."
 exit 0
 EOF
 
